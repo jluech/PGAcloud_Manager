@@ -14,27 +14,27 @@ def status():
     return "Status: OK"
 
 
-@mgr.route("/pga", methods=["POST"])
-def run_pga():
-    """
-    Run a new Parallel Genetic Algorithm in the cloud
-
-    :return:
-    """
-    print("creating pga")
-    return
-
-
-@mgr.route("/pga", methods=["GET"])
-def get_all_pga():
-    print("getting all pga")
-    return
-
-
-@mgr.route("/pga/<number:pga_id>", methods=["GET"])
-def get_pga(pga_id):
-    print("getting pga " + pga_id)
-    return
+# @mgr.route("/pga", methods=["POST"])
+# def run_pga():
+#     """
+#     Run a new Parallel Genetic Algorithm in the cloud
+#
+#     :return:
+#     """
+#     print("creating pga")
+#     return
+#
+#
+# @mgr.route("/pga", methods=["GET"])
+# def get_all_pga():
+#     print("getting all pga")
+#     return
+#
+#
+# @mgr.route("/pga/<number:pga_id>", methods=["GET"])
+# def get_pga(pga_id):
+#     print("getting pga " + pga_id)
+#     return
 
 
 if __name__ == '__main__':
