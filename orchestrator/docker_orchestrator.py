@@ -1,4 +1,5 @@
 import logging
+import warnings
 
 import docker
 
@@ -22,13 +23,13 @@ class DockerOrchestrator(Orchestrator):
         # self.__disconnect_from_network(self.pga_network.id)
 
     def scale_component(self, network_id, service_name, scaling):
-        if service_name.__contains__("--"):
-            effective_name = service_name.split("--")[1]
+        if service_name.__contains__(Orchestrator.name_separator):
+            effective_name = service_name.split(Orchestrator.name_separator)[1]
         else:
             effective_name = service_name
 
         if effective_name in ("runner", "manager"):
-            raise Warning("Scaling aborted: Scaling of runner or manager services not permitted!")
+            warnings.warn("Scaling aborted: Scaling of runner or manager services not permitted!")
         else:
             # self.__connect_to_network(network_id)
             service = self.docker_master_client.services.list(filters={"name": service_name})
