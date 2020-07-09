@@ -20,11 +20,13 @@ class DockerOrchestrator(Orchestrator):
 
     def setup_pga(self, services, setups, operators, population, properties):
         self.__create_network()
-        # self.__connect_to_network(self.pga_network.id)
+        # trigger connector build
+        connector = self.__connect_to_network(self.pga_network.id)
         self.__deploy_stack(services=services, setups=setups, operators=operators)
-        self.__distribute_properties(properties)
-        self.__initialize_population(population)
-        # self.__disconnect_from_network(self.pga_network.id)
+        # call connector, add use_init bool as param
+        self._trigger_connector(connector)
+        # self.__distribute_properties(properties)
+        # self.__initialize_population(population)
 
     def scale_component(self, network_id, service_name, scaling):
         if service_name.__contains__(Orchestrator.name_separator):
@@ -35,13 +37,11 @@ class DockerOrchestrator(Orchestrator):
         if effective_name in ("runner", "manager"):
             warnings.warn("Scaling aborted: Scaling of runner or manager services not permitted!")
         else:
-            # self.__connect_to_network(network_id)
             found_services = self.docker_master_client.services.list(filters={"name": service_name})
             if not found_services.__len__() > 0:
                 raise Exception("No service {name_} found for scaling!".format(name_=service_name))
             service = found_services[0]
             service.scale(replicas=scaling)
-            # self.__disconnect_from_network(network_id)
 
     def __create_network(self):
         # Creates a new docker network.
@@ -73,6 +73,16 @@ class DockerOrchestrator(Orchestrator):
             self.scale_component(network_id=self.pga_network.id, service_name=new_service.name,
                                  scaling=service.get("scaling"))
 
+    def _trigger_connector(self, connector):
+        pga_id = connector.name.split(Orchestrator.name_separator)[0]
+        requests.get(
+            url="https://{host_}:5001/{pga_}/ls".format(
+                host_=connector.name,
+                pga_=pga_id
+            ),
+            verify=False
+        )
+
     def __initialize_population(self, population):
         # if population.get("use_initial_population"):
         #     file_path = population.get("population_file_path")
@@ -92,14 +102,39 @@ class DockerOrchestrator(Orchestrator):
         # class RabbitMessageQueue extending abstract MessageHandler
 
     def __connect_to_network(self, network_id):
-        # Connects the manager service to the network to communicate with the PGA.
-        logging.debug("CONNECTING TO NETWORK {id_}".format(id_=network_id))  # TODO
-        # manager_container = self.docker_local_client.containers.list(
-        #     filters={"label": "com.docker.swarm.service.name=manager"})[0]
-        # nets = self.docker_master_client.networks.list(filters={"label": "PGAcloud=PGA-{id_}".format(id_=network_id)})
-        # nets[0].connect(manager_container)
-        # network = self.docker_master_client.networks.get(network_id, verbose=True, scope="swarm")
-        # network.connect(manager_container)
+        # Creates an intermediary container acting as an interface to the PGA.
+        network = self.docker_master_client.networks.get(network_id)
+        connector = self.docker_master_client.services.create(
+            image="jluech/pga-cloud-connector",
+            name="connector{sep_}{id_}".format(
+                name_="connector",
+                sep_=Orchestrator.name_separator,
+                id_=self.pga_id
+            ),
+            hostname="connector",
+            networks=[network.name],
+            labels={"PGAcloud": "PGA-{id_}".format(id_=self.pga_id)},
+            endpoint_spec={
+                "Ports": [
+                    {"Protocol": "tcp", "PublishedPort": 5001, "TargetPort": 5000},
+                ]
+            },
+        )
+
+        # Updates the service with SSL secrets.
+        script_path = os.path.join(os.getcwd(), "utilities/docker_service_update_secrets.sh")
+        script_args = "--certs {certs_} --host {host_}"
+        utils.execute_command(
+            command=script_path + " " + script_args.format(
+                certs_="/run/secrets",
+                host_=self.host
+            ),
+            working_directory=os.curdir,
+            environment_variables=None,
+            executor="DockerOrchestrator",
+            livestream=True
+        )
+        return connector
 
     def __disconnect_from_network(self, network_id):
         # Disconnects the manager service from the PGA network.

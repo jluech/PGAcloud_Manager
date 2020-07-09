@@ -1,3 +1,4 @@
+import logging
 import os
 import subprocess
 import sys
@@ -12,7 +13,7 @@ def execute_command(
         working_directory,
         environment_variables,
         executor,
-        logger,
+        logger=logging,
         livestream=False
 ):
     logger_prefix = ""

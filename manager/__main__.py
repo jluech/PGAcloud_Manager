@@ -4,8 +4,8 @@ import os
 from flask import Flask, jsonify, make_response, request
 from werkzeug.utils import secure_filename
 
-from manager import utils
 from orchestrator.docker_orchestrator import DockerOrchestrator
+from utililities import utils
 
 logging.basicConfig(level=logging.DEBUG)  # TODO: remove and reduce to INFO
 
