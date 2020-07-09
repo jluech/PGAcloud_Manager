@@ -32,7 +32,10 @@ class DockerOrchestrator(Orchestrator):
             warnings.warn("Scaling aborted: Scaling of runner or manager services not permitted!")
         else:
             # self.__connect_to_network(network_id)
-            service = self.docker_master_client.services.list(filters={"name": service_name})
+            found_services = self.docker_master_client.services.list(filters={"name": service_name})
+            if not found_services.__len__() > 0:
+                raise Exception("No service {name_} found for scaling!".format(name_=service_name))
+            service = found_services[0]
             service.scale(replicas=scaling)
             # self.__disconnect_from_network(network_id)
 
@@ -68,10 +71,15 @@ class DockerOrchestrator(Orchestrator):
         #     population_file = files.get(filename)
         logging.debug("INITIALIZE POPULATION")  # TODO
         logging.debug(population)
+        # TODO 104: init pop from Runner container (method initialize() )
+        # check docker tutorial votingapp for container api requests (runner needs api, distinguish different runners)
 
     def __distribute_properties(self, properties):
         logging.debug("DISTRIBUTE PROPERTIES")  # TODO
         logging.debug(properties)
+        # TODO 104: store properties in DB from Runner container
+        # separate method store_properties() in class RedisHandler extending abstract DatabaseHandler
+        # class RabbitMessageQueue extending abstract MessageHandler
 
     def __connect_to_network(self, network_id):
         # Connects the manager service to the network to communicate with the PGA.
