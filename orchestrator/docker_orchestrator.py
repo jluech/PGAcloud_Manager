@@ -1,9 +1,12 @@
 import logging
+import os
 import warnings
 
 import docker
+import requests
 
 from orchestrator.orchestrator import Orchestrator
+from utililities import utils
 
 
 class DockerOrchestrator(Orchestrator):
@@ -25,7 +28,7 @@ class DockerOrchestrator(Orchestrator):
 
     def scale_component(self, network_id, service_name, scaling):
         if service_name.__contains__(Orchestrator.name_separator):
-            effective_name = service_name.split(Orchestrator.name_separator)[1]
+            effective_name = service_name.split(Orchestrator.name_separator)[0]
         else:
             effective_name = service_name
 
@@ -125,26 +128,14 @@ class DockerOrchestrator(Orchestrator):
         return docker_client
 
     def __create_docker_service(self, service_dict, network):
-        ports = []
-        if service_dict.get("name") == "runner":
-            ports = [
-                {"Protocol": "tcp", "PublishedPort": 5001, "TargetPort": 5000}  # runner flask api
-            ]
-        logging.debug("creating {service_} with ports {ports_}".format(
-            service_=service_dict.get("name"),
-            ports_=ports
-        ))  # TODO: remove
-
         return self.docker_master_client.services.create(
-                image=service_dict.get("image"),
-                name="pga-{id_}{sep_}{name_}".format(
-                    id_=self.pga_id,
-                    sep_=Orchestrator.name_separator,
-                    name_=service_dict.get("name")
-                ),
-                networks=[network.name],
-                labels={"PGAcloud": "PGA-{id_}".format(id_=self.pga_id)},
-                endpoint_spec={
-                    "Ports": ports
-                },
-            )
+            image=service_dict.get("image"),
+            name="{name_}{sep_}{id_}".format(
+                name_=service_dict.get("name"),
+                sep_=Orchestrator.name_separator,
+                id_=self.pga_id
+            ),
+            hostname=service_dict.get("name"),
+            networks=[network.name],
+            labels={"PGAcloud": "PGA-{id_}".format(id_=self.pga_id)},
+        )
