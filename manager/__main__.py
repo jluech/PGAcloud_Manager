@@ -78,17 +78,23 @@ def create_pga():
         raise Exception("No PGA model provided! Aborting deployment.")
     if model == "Master-Slave":
         # Retrieves the configuration details.
-        components = {}
-        images_config = configuration.get("images")
-        for image_key in [*images_config]:
-            image = images_config.get(image_key)
-            components[image.get("name")] = image
-
         services = {}
         services_config = configuration.get("services")
         for service_key in [*services_config]:
             service = services_config.get(service_key)
             services[service.get("name")] = service
+
+        setups = {}
+        images_config = configuration.get("setups")
+        for service_key in [*images_config]:
+            service = images_config.get(service_key)
+            setups[service.get("name")] = service
+
+        operators = {}
+        operators_config = configuration.get("operators")
+        for service_key in [*operators_config]:
+            service = operators_config.get(service_key)
+            operators[service.get("name")] = service
 
         population = {}
         population_config = configuration.get("population")
@@ -103,7 +109,8 @@ def create_pga():
         # TODO 104: deploy INIT image if configuration.get("properties").get("USE_INIT")
         # TODO 104: deploy rest of stack
         # Creates the new PGA.
-        orchestrator.setup_pga(components=components, services=services, population=population, properties=properties)
+        orchestrator.setup_pga(services=services, setups=setups, operators=operators,
+                               population=population, properties=properties)
 
         # TODO 104: make files available to components (docker configs?)
 

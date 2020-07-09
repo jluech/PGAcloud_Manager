@@ -15,10 +15,10 @@ class DockerOrchestrator(Orchestrator):
             # default docker port; Note above https://docs.docker.com/engine/security/https/#secure-by-default
         )
 
-    def setup_pga(self, components, services, population, properties):
+    def setup_pga(self, services, setups, operators, population, properties):
         self.__create_network()
         # self.__connect_to_network(self.pga_network.id)
-        self.__deploy_stack(components, services)
+        self.__deploy_stack(services=services, setups=setups, operators=operators)
         self.__distribute_properties(properties)
         self.__initialize_population(population)
         # self.__disconnect_from_network(self.pga_network.id)
@@ -52,14 +52,20 @@ class DockerOrchestrator(Orchestrator):
             labels={"PGAcloud": "PGA-{id_}".format(id_=self.pga_id)},
         )
 
-    def __deploy_stack(self, components, services):
+    def __deploy_stack(self, services, setups, operators):
         # Creates a service for each component defined in the configuration.
         for support_key in [*services]:
             support = services.get(support_key)
-            new_support = self.__create_docker_service(support, self.pga_network)
+            self.__create_docker_service(support, self.pga_network)
 
-        for service_key in [*components]:
-            service = components.get(service_key)
+        for service_key in [*setups]:
+            service = setups.get(service_key)
+            new_service = self.__create_docker_service(service, self.pga_network)
+            self.scale_component(network_id=self.pga_network.id, service_name=new_service.name,
+                                 scaling=service.get("scaling"))
+
+        for service_key in [*operators]:
+            service = operators.get(service_key)
             new_service = self.__create_docker_service(service, self.pga_network)
             self.scale_component(network_id=self.pga_network.id, service_name=new_service.name,
                                  scaling=service.get("scaling"))
