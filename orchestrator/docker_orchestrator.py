@@ -7,9 +7,10 @@ from orchestrator.orchestrator import Orchestrator
 
 
 class DockerOrchestrator(Orchestrator):
-    def __init__(self):
+    def __init__(self, master_host):
+        self.host = master_host
         self.docker_master_client = self.__create_docker_client(
-            host_ip="192.168.2.59",
+            host_ip=master_host,
             host_port=2376
             # default docker port; Note above https://docs.docker.com/engine/security/https/#secure-by-default
         )

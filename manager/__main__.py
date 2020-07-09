@@ -58,10 +58,11 @@ def create_pga():
         file.save(os.path.join(files_dir, secure_filename(file.filename)))
 
     # Recognizes the correct orchestrator.
+    master_host = request.args.get("master_host")
     orchestrator_name = request.args.get("orchestrator")
     if not orchestrator_name:
         raise Exception("No cloud orchestrator provided! Aborting deployment.")
-    orchestrator = get_orchestrator(orchestrator_name)
+    orchestrator = get_orchestrator(orchestrator_name, master_host)
 
     # Retrieves the configuration.
     config_file_path = request.args.get("config")
@@ -128,12 +129,12 @@ def get_pga(pga_id):
     })
 
 
-def get_orchestrator(orchestrator_name):
+def get_orchestrator(orchestrator_name, master_host):
     if orchestrator_name == "docker":
-        return DockerOrchestrator()
+        return DockerOrchestrator(master_host)
     elif orchestrator_name == "kubernetes":
         print("Kubernetes orchestrator not yet implemented! Falling back to docker orchestrator.")
-        return DockerOrchestrator()  # TODO 202: implement kubernetes orchestrator
+        return DockerOrchestrator(master_host)  # TODO 202: implement kubernetes orchestrator
     else:
         raise Exception("Unknown orchestrator requested!")
 
