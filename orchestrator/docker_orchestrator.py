@@ -43,18 +43,7 @@ class DockerOrchestrator(Orchestrator):
             service = found_services[0]
             service.scale(replicas=scaling)
 
-    def __create_network(self):
-        # Creates a new docker network.
-        self.pga_id = Orchestrator.new_id()
-        self.pga_network = self.docker_master_client.networks.create(
-            name="overlay-pga-{id_}".format(id_=self.pga_id),
-            driver="overlay",
-            check_duplicate=True,
-            attachable=True,
-            scope="swarm",
-            labels={"PGAcloud": "PGA-{id_}".format(id_=self.pga_id)},
-        )
-
+# Commands to control the orchestrator
     def __deploy_stack(self, services, setups, operators):
         # Creates a service for each component defined in the configuration.
         for support_key in [*services]:
@@ -103,7 +92,8 @@ class DockerOrchestrator(Orchestrator):
 
     def __connect_to_network(self, network_id):
         # Creates an intermediary container acting as an interface to the PGA.
-        network = self.docker_master_client.networks.get(network_id)
+        pga_network = self.docker_master_client.networks.get(network_id)
+        bridge_network = self.__get_bridge_network()
         connector = self.docker_master_client.services.create(
             image="jluech/pga-cloud-connector",
             name="connector{sep_}{id_}".format(
@@ -112,7 +102,7 @@ class DockerOrchestrator(Orchestrator):
                 id_=self.pga_id
             ),
             hostname="connector",
-            networks=[network.name],
+            networks=[pga_network.name, bridge_network.name],
             labels={"PGAcloud": "PGA-{id_}".format(id_=self.pga_id)},
             endpoint_spec={
                 "Ports": [
@@ -144,6 +134,7 @@ class DockerOrchestrator(Orchestrator):
         # network = self.docker_master_client.networks.get(network_id, verbose=True, scope="swarm")
         # network.disconnect(manager_container)
 
+# Commands to for docker stuff
     def __create_docker_client(self, host_ip, host_port):
         tls_config = docker.tls.TLSConfig(
             ca_cert="/run/secrets/SSL_CA_PEM",
@@ -161,6 +152,22 @@ class DockerOrchestrator(Orchestrator):
             tls=tls_config,
         )
         return docker_client
+
+    def __get_bridge_network(self):
+        # Gets the docker network to bridge the manager to the connector.
+        return self.docker_master_client.networks.list(filters={"labels": "PGAcloud=PGA-Connection"})
+
+    def __create_network(self):
+        # Creates a new docker network.
+        self.pga_id = Orchestrator.new_id()
+        self.pga_network = self.docker_master_client.networks.create(
+            name="overlay-pga-{id_}".format(id_=self.pga_id),
+            driver="overlay",
+            check_duplicate=True,
+            attachable=True,
+            scope="swarm",
+            labels={"PGAcloud": "PGA-{id_}".format(id_=self.pga_id)},
+        )
 
     def __create_docker_service(self, service_dict, network):
         return self.docker_master_client.services.create(
