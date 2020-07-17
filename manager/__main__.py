@@ -107,7 +107,6 @@ def create_pga():
             properties[property_key] = properties_config.get(property_key)
 
         # TODO 104: deploy INIT image if configuration.get("properties").get("USE_INIT")
-        # TODO 104: deploy rest of stack
         # Creates the new PGA.
         orchestrator.setup_pga(services=services, setups=setups, operators=operators,
                                population=population, properties=properties)
@@ -120,20 +119,6 @@ def create_pga():
         raise Exception("Custom model detected.")  # TODO 205: implement for custom models
 
     return jsonify({"id": orchestrator.pga_id})
-
-
-# @mgr.route("/pga", methods=["GET"])
-# def get_all_pga():
-#     return "OK"
-
-
-@mgr.route("/pga/<int:pga_id>", methods=["GET"])
-def get_pga(pga_id):
-    print("getting pga {}".format(pga_id))
-    return jsonify({
-        "id": pga_id,
-        "name": "other"
-    })
 
 
 def get_orchestrator(orchestrator_name, master_host):
