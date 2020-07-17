@@ -230,7 +230,14 @@ class DockerOrchestrator(Orchestrator):
                 file_content = file.read()
                 file.close()
 
-                config = self.docker_master_client.configs.create(name=file_name, data=file_content)
+                config = self.docker_master_client.configs.create(
+                    name="{id_}{sep_}{name_}".format(
+                        id_=self.pga_id,
+                        sep_=Orchestrator.name_separator,
+                        name_=file_name
+                    ),
+                    data=file_content
+                )
                 configs.append(config)
             except Exception as e:
                 traceback.print_exc()
