@@ -31,13 +31,13 @@ def status():
     return "OK"
 
 
-@mgr.route("/files", methods=["GET"])
-def get_files():
+@mgr.route("/files/<int:pga_id>", methods=["GET"])
+def get_files(pga_id):
     """
     Get all uploaded YAML files as a dictionary.
     :return: dict of uploaded YAML files as JSON
     """
-    files_dict = utils.get_uploaded_files_dict()  # TODO: require pga-id to lookup subdir
+    files_dict = utils.get_uploaded_files_dict(pga_id)  # TODO: require pga-id to lookup subdir
     return jsonify(files_dict)
 
 
@@ -49,27 +49,31 @@ def create_pga():
 
     :return (dict): id of new pga
     """
-    # TODO: convert files to docker configs? easier sharing across containers/services
-    # Saves all the files that were uploaded with the request.
-    filenames = request.files.keys()
-    files_dir = utils.get_uploaded_files_path()  # TODO: make subdir for pga id, avoiding filename duplicates
-    for filename in filenames:
-        file = request.files[filename]
-        file.save(os.path.join(files_dir, secure_filename(file.filename)))
-
     # Recognizes the correct orchestrator.
     master_host = request.args.get("master_host")
     orchestrator_name = request.args.get("orchestrator")
     if not orchestrator_name:
         raise Exception("No cloud orchestrator provided! Aborting deployment.")
     orchestrator = get_orchestrator(orchestrator_name, master_host)
+    pga_id = orchestrator.pga_id
+
+    # TODO: convert files to docker configs? easier sharing across containers/services
+    # Saves all the files that were uploaded with the request.
+    file_keys = request.files.keys()
+    files_dir = utils.get_uploaded_files_path(pga_id)
+    file_names = []
+    for file_key in file_keys:
+        file = request.files[file_key]
+        file_name = secure_filename(file.filename)
+        file_names.append(file_name)
+        file.save(os.path.join(files_dir, file_name))
 
     # Retrieves the configuration.
     config_file_path = request.args.get("config")
     if not config_file_path:
         raise Exception("No PGA configuration provided! Aborting deployment.")
     config_filename = utils.get_filename_from_path(config_file_path)
-    config_path = os.path.join(utils.get_uploaded_files_path(), config_filename+".yml")
+    config_path = os.path.join(files_dir, config_filename+".yml")
     configuration = utils.parse_yaml(config_path)
 
     # Determines the model to deploy.

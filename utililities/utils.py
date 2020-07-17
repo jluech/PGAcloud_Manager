@@ -42,22 +42,21 @@ def execute_command(
             logger.debug(logger_prefix + "command output: " + line.rstrip())
 
     return_code = process.wait()
-
     stdout = stdout.rstrip()
-
     return stdout, return_code
 
 
-def get_uploaded_files_path():
-    return files_dir
+def get_uploaded_files_path(pga_id):
+    return os.path.join(files_dir, pga_id)
 
 
-def get_uploaded_files_dict():
+def get_uploaded_files_dict(pga_id):
     files_dict = {}
-    files = os.listdir(files_dir)
+    directory = get_uploaded_files_path(pga_id)
+    files = os.listdir(directory)
     for filename in files:
         name = filename.split(".")[0]
-        yaml_dict = parse_yaml(os.path.join(files_dir, filename))
+        yaml_dict = parse_yaml(os.path.join(directory, filename))
         yaml_dict["_filename"] = filename
         files_dict[name] = yaml_dict
     return files_dict
