@@ -8,6 +8,7 @@ import yaml
 files_dir = ""
 
 
+# --- General util commands ---
 def execute_command(
         command,
         working_directory,
@@ -46,8 +47,15 @@ def execute_command(
     return stdout, return_code
 
 
+def parse_yaml(yaml_file_path):
+    with open(yaml_file_path, mode="r", encoding="utf-8") as yaml_file:
+        content = yaml.safe_load(yaml_file) or {}
+    return content
+
+
+# --- File and path handling commands ---
 def get_uploaded_files_path(pga_id):
-    return os.path.join(files_dir, pga_id)
+    return os.path.join(files_dir, str(pga_id))
 
 
 def get_uploaded_files_dict(pga_id):
@@ -70,10 +78,8 @@ def get_filename_from_path(file_path):
     return filename
 
 
-def parse_yaml(yaml_file_path):
-    with open(yaml_file_path, mode="r", encoding="utf-8") as yaml_file:
-        content = yaml.safe_load(yaml_file) or {}
-    return content
+def create_pga_subdir(pga_id):
+    os.makedirs(os.path.join(files_dir, str(pga_id)))
 
 
 def __set_files_dir(path):

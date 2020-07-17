@@ -60,6 +60,7 @@ def create_pga():
     # TODO: convert files to docker configs? easier sharing across containers/services
     # Saves all the files that were uploaded with the request.
     file_keys = request.files.keys()
+    utils.create_pga_subdir(pga_id)
     files_dir = utils.get_uploaded_files_path(pga_id)
     file_names = []
     for file_key in file_keys:
