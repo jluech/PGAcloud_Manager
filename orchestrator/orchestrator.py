@@ -14,7 +14,7 @@ class Orchestrator(ABC):
         pass
 
     @abstractmethod
-    def setup_pga(self, services, setups, operators, population, properties):
+    def setup_pga(self, services, setups, operators, population, properties, file_names):
         pass
 
     @abstractmethod

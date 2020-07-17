@@ -113,7 +113,7 @@ def create_pga():
         # TODO 104: deploy INIT image if configuration.get("properties").get("USE_INIT")
         # Creates the new PGA.
         orchestrator.setup_pga(services=services, setups=setups, operators=operators,
-                               population=population, properties=properties)
+                               population=population, properties=properties, file_names=file_names)
 
         # TODO 104: make files available to components (docker configs?)
 
