@@ -5,6 +5,11 @@ COPY . /pga
 WORKDIR /pga
 
 RUN apt-get -y update && apt-get -y upgrade
+
+# Install Docker
+RUN apt install -y docker.io
+
+# Install dependencies
 RUN pip install -U pip && pip install -r requirements.txt
 
 ENTRYPOINT [ "python", "-m", "manager" ]
