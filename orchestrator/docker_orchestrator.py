@@ -91,7 +91,7 @@ class DockerOrchestrator(Orchestrator):
                         id_=self.pga_id
                     ),
                     hostname=setup.get("name"),
-                    networks=[self.pga_network.name, "bridge-pga"],
+                    networks=[self.pga_network.name, "pga-management"],
                     labels={"PGAcloud": "PGA-{id_}".format(id_=self.pga_id)},
                     endpoint_spec={
                         "Mode": "dnsrr"  # TODO: check if required
@@ -176,7 +176,7 @@ class DockerOrchestrator(Orchestrator):
     def __create_network(self):
         # Creates a new docker network.
         self.pga_network = self.docker_master_client.networks.create(
-            name="overlay-pga-{id_}".format(id_=self.pga_id),
+            name="pga-overlay-{id_}".format(id_=self.pga_id),
             driver="overlay",
             check_duplicate=True,
             attachable=True,
