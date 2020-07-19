@@ -119,6 +119,8 @@ def create_pga():
         # Creates the new PGA.
         orchestrator.setup_pga(services=services, setups=setups, operators=operators,
                                population=population, properties=properties, file_names=file_names)
+        orchestrator.distribute_properties(properties=properties)
+        orchestrator.initialize_population(population=population)
     elif model == "Island":
         raise Exception("Island model not implemented yet. Aborting deployment.")  # TODO 204: implement island model
     else:

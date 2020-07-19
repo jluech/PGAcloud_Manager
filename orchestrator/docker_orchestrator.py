@@ -26,17 +26,37 @@ class DockerOrchestrator(Orchestrator):
             # default docker port; Note above https://docs.docker.com/engine/security/https/#secure-by-default
         )
 
+# Common orchestrator functionality.
     def setup_pga(self, services, setups, operators, population, properties, file_names):
         self.__create_network()
         configs = self.__create_configs(file_names)
         deploy_init = (not population.get("use_initial_population") or properties.get("USE_INIT"))
         self.__deploy_stack(services=services, setups=setups, operators=operators,
                             configs=configs, deploy_initializer=deploy_init)
-        self._trigger_population_initialization(population)
-        self.__trigger_properties_distribution(properties)
 
-    def scale_component(self, network_id, service_name, scaling):
-        # Scales the given service in the given network to the given scaling amount.
+    def distribute_properties(self, properties):
+        # TODO 106: store properties in DB from Runner container
+        # separate method store_properties() in class RedisHandler extending abstract DatabaseHandler
+        # class RabbitMessageQueue extending abstract MessageHandler
+        requests.put(
+            url="http://runner{sep_}{id_}:5000/{id_}/properties".format(
+                sep_=Orchestrator.name_separator,
+                id_=self.pga_id
+            ),
+            verify=False
+        )
+
+    def initialize_population(self, population):
+        # TODO: remove connector image and repo since no longer needed
+        requests.post(
+            url="http://runner{sep_}{id_}:5000/{id_}/population".format(
+                sep_=Orchestrator.name_separator,
+                id_=self.pga_id
+            ),
+            verify=False
+        )
+
+    def scale_component(self, service_name, scaling):
         if service_name.__contains__(Orchestrator.name_separator):
             effective_name = service_name.split(Orchestrator.name_separator)[0]
         else:
@@ -51,7 +71,7 @@ class DockerOrchestrator(Orchestrator):
             service = found_services[0]
             service.scale(replicas=scaling)
 
-# Commands to control the orchestrator
+# Commands to control the orchestrator.
     def __deploy_stack(self, services, setups, operators, configs, deploy_initializer):
         # Creates a service for each component defined in the configuration.
         for support_key in [*services]:
@@ -85,15 +105,13 @@ class DockerOrchestrator(Orchestrator):
             else:
                 new_service = self.__create_docker_service(setup, self.pga_network)
 
-            self.scale_component(network_id=self.pga_network.id, service_name=new_service.name,
-                                 scaling=setup.get("scaling"))
+            self.scale_component(service_name=new_service.name, scaling=setup.get("scaling"))
             self.__update_service_with_configs(configs, new_service.name)
 
         for operator_key in [*operators]:
             operator = operators.get(operator_key)
             new_service = self.__create_docker_service(operator, self.pga_network)
-            self.scale_component(network_id=self.pga_network.id, service_name=new_service.name,
-                                 scaling=operator.get("scaling"))
+            self.scale_component(service_name=new_service.name, scaling=operator.get("scaling"))
             self.__update_service_with_configs(configs, new_service.name)
 
         # Waits for WAIT_FOR_CONFIRMATION_DURATION seconds or until runner is up and its API ready.
@@ -136,67 +154,7 @@ class DockerOrchestrator(Orchestrator):
         else:
             logging.debug("Runner service ready.")
 
-    def _trigger_population_initialization(self, population_dict):
-        # TODO: remove connector image and repo since no longer needed
-        use_population = population_dict.get("use_initial_population")
-
-        if use_population:  # TODO: recheck if wait-for-status is required when using queues
-            # Waits for WAIT_FOR_CONFIRMATION_DURATION seconds or until runner is up and its API ready.
-            runner_running = False
-            runner_status = "NOK"
-            exceeding = False
-            troubled = False
-            duration = 0.0
-            start = time.perf_counter()
-            logging.debug("Waiting for initializer service.")
-            while not runner_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
-                try:
-                    response = requests.get(
-                        url="http://runner{sep_}{id_}:5000/status".format(
-                            sep_=Orchestrator.name_separator,
-                            id_=self.pga_id
-                        ),
-                        verify=False
-                    )
-                    runner_status = response.content.decode("utf-8")
-                except:
-                    pass
-                finally:
-                    runner_running = runner_status == "OK"
-
-                if duration >= WAIT_FOR_CONFIRMATION_EXCEEDING and not exceeding:
-                    logging.debug("This is taking longer than usual...")
-                    exceeding = True  # only print this once
-
-                if duration >= WAIT_FOR_CONFIRMATION_TROUBLED and not troubled:
-                    logging.debug("Oh come on! You can do it...")
-                    troubled = True  # only print this once
-
-                time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
-                duration = time.perf_counter() - start
-
-            if duration >= WAIT_FOR_CONFIRMATION_DURATION:
-                logging.debug("Exceeded waiting time of {time_} seconds. It may have encountered an error. "
-                              "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
-            else:
-                logging.debug("Initializer service(s) ready.")
-
-        requests.post(
-            url="http://runner{sep_}{id_}:5000/population".format(
-                sep_=Orchestrator.name_separator,
-                id_=self.pga_id
-            ),
-            verify=False
-        )
-
-    def __trigger_properties_distribution(self, properties):
-        logging.debug("DISTRIBUTE PROPERTIES")  # TODO
-        logging.debug(properties)
-        # TODO 104: store properties in DB from Runner container
-        # separate method store_properties() in class RedisHandler extending abstract DatabaseHandler
-        # class RabbitMessageQueue extending abstract MessageHandler
-
-# Commands for docker stuff
+# Commands for docker stuff.
     def __create_docker_client(self, host_ip, host_port):
         tls_config = docker.tls.TLSConfig(
             ca_cert="/run/secrets/SSL_CA_PEM",
@@ -289,7 +247,7 @@ class DockerOrchestrator(Orchestrator):
             },
         )
 
-# Auxiliary commands
+# Auxiliary commands.
     def __prepare_array_as_script_param(self, array):
         param = ""
         for elem in array:
