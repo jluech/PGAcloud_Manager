@@ -186,9 +186,6 @@ class DockerOrchestrator(Orchestrator):
                 sep_=Orchestrator.name_separator,
                 id_=self.pga_id
             ),
-            params={
-                "use_population": use_population,
-            },
             verify=False
         )
 

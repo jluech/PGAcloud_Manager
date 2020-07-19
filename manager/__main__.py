@@ -64,7 +64,12 @@ def create_pga():
     file_names = []
     for file_key in file_keys:
         file = request.files[file_key]
-        file_name = secure_filename(file.filename)
+        if file_key == "population":
+            file_name = secure_filename("population.yml")
+        elif file_key == "config":
+            file_name = secure_filename("config.yml")
+        else:
+            file_name = secure_filename(file.filename)
         file_names.append(file_name)
         file.save(os.path.join(files_dir, file_name))
 
@@ -132,5 +137,5 @@ def get_orchestrator(orchestrator_name, master_host):
         raise Exception("Unknown orchestrator requested!")
 
 
-if __name__ == '__main__':
-    mgr.run(host='0.0.0.0', debug=True)  # TODO: remove debug mode
+if __name__ == "__main__":
+    mgr.run(host="0.0.0.0", debug=True)  # TODO: remove debug mode
