@@ -5,7 +5,7 @@ from flask import Flask, jsonify, make_response, request
 from werkzeug.utils import secure_filename
 
 from orchestrator.docker_orchestrator import DockerOrchestrator
-from utililities import utils
+from utilities import utils
 
 logging.basicConfig(level=logging.DEBUG)  # TODO: remove and reduce to INFO
 
@@ -37,7 +37,7 @@ def get_files(pga_id):
     Get all uploaded YAML files as a dictionary.
     :return: dict of uploaded YAML files as JSON
     """
-    files_dict = utils.get_uploaded_files_dict(pga_id)  # TODO: require pga-id to lookup subdir
+    files_dict = utils.get_uploaded_files_dict(pga_id)
     return jsonify(files_dict)
 
 
@@ -57,7 +57,6 @@ def create_pga():
     orchestrator = get_orchestrator(orchestrator_name, master_host)
     pga_id = orchestrator.pga_id
 
-    # TODO: convert files to docker configs? easier sharing across containers/services
     # Saves all the files that were uploaded with the request.
     file_keys = request.files.keys()
     utils.create_pga_subdir(pga_id)
@@ -115,9 +114,6 @@ def create_pga():
         # Creates the new PGA.
         orchestrator.setup_pga(services=services, setups=setups, operators=operators,
                                population=population, properties=properties, file_names=file_names)
-
-        # TODO 104: make files available to components (docker configs?)
-
     elif model == "Island":
         raise Exception("Island model not implemented yet. Aborting deployment.")  # TODO 204: implement island model
     else:

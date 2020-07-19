@@ -8,7 +8,7 @@ import docker
 import requests
 
 from orchestrator.orchestrator import Orchestrator
-from utililities import utils
+from utilities import utils
 
 WAIT_FOR_CONFIRMATION_DURATION = 45.0
 WAIT_FOR_CONFIRMATION_EXCEEDING = 15.0
@@ -54,11 +54,14 @@ class DockerOrchestrator(Orchestrator):
         # Creates a service for each component defined in the configuration.
         for support_key in [*services]:
             support = services.get(support_key)
-            self.__create_docker_service(support, self.pga_network, configs)
+            new_service = self.__create_docker_service(support, self.pga_network)
+            self.__update_service_with_configs(configs, new_service.name)
 
         for setup_key in [*setups]:
             setup = setups.get(setup_key)
-            if setup.get("name") == "runner":
+            setup_name = setup.get("name")
+            if setup_name == "runner":
+                # Creates the runner service with bridge network.
                 new_service = self.docker_master_client.services.create(
                     image=setup.get("image"),
                     name="runner{sep_}{id_}".format(
@@ -71,18 +74,20 @@ class DockerOrchestrator(Orchestrator):
                     endpoint_spec={
                         "Mode": "dnsrr"  # TODO: check if required
                     },
-                    configs=configs,
                 )
             else:
-                new_service = self.__create_docker_service(setup, self.pga_network, configs)
+                new_service = self.__create_docker_service(setup, self.pga_network)
+
             self.scale_component(network_id=self.pga_network.id, service_name=new_service.name,
                                  scaling=setup.get("scaling"))
+            self.__update_service_with_configs(configs, new_service.name)
 
         for operator_key in [*operators]:
             operator = operators.get(operator_key)
-            new_service = self.__create_docker_service(operator, self.pga_network, configs)
+            new_service = self.__create_docker_service(operator, self.pga_network)
             self.scale_component(network_id=self.pga_network.id, service_name=new_service.name,
                                  scaling=operator.get("scaling"))
+            self.__update_service_with_configs(configs, new_service.name)
 
         # Waits for WAIT_FOR_CONFIRMATION_DURATION seconds or until runner is up and its API ready.
         runner_running = False
@@ -187,7 +192,7 @@ class DockerOrchestrator(Orchestrator):
         # separate method store_properties() in class RedisHandler extending abstract DatabaseHandler
         # class RabbitMessageQueue extending abstract MessageHandler
 
-# Commands to for docker stuff
+# Commands for docker stuff
     def __create_docker_client(self, host_ip, host_port):
         tls_config = docker.tls.TLSConfig(
             ca_cert="/run/secrets/SSL_CA_PEM",
@@ -230,22 +235,43 @@ class DockerOrchestrator(Orchestrator):
                 file_content = file.read()
                 file.close()
 
-                config = self.docker_master_client.configs.create(
-                    name="{id_}{sep_}{name_}".format(
+                config_name = "{id_}{sep_}{name_}".format(
                         id_=self.pga_id,
                         sep_=Orchestrator.name_separator,
                         name_=file_name
-                    ),
-                    data=file_content
+                    )
+                self.docker_master_client.configs.create(
+                    name=config_name,
+                    data=file_content,
+                    labels={"PGAcloud": "PGA-{id_}".format(id_=self.pga_id)}
                 )
-                configs.append(config)
+                configs.append(config_name)
             except Exception as e:
                 traceback.print_exc()
                 logging.error(traceback.format_exc())
 
         return configs
 
-    def __create_docker_service(self, service_dict, network, configs):
+    def __update_service_with_configs(self, configs, service):
+        # Updates the given service with the new configs.
+        logging.debug("Updating with docker configs.")
+        config_param = self.__prepare_string_array_as_script_param(configs)
+        logging.debug(config_param)
+        script_path = os.path.join(os.getcwd(), "utilities/docker_service_update_configs.sh")
+        script_args = "--service {service_} --host {host_} --configs {confs_}"
+        utils.execute_command(
+            command=script_path + " " + script_args.format(
+                service_=service,
+                host_=self.host,
+                confs_=config_param,
+            ),
+            working_directory=os.curdir,
+            environment_variables=None,
+            executor="StackDeploy",
+            livestream=True,
+        )
+
+    def __create_docker_service(self, service_dict, network):
         return self.docker_master_client.services.create(
             image=service_dict.get("image"),
             name="{name_}{sep_}{id_}".format(  # TODO: check if numbering is required across networks
@@ -259,7 +285,14 @@ class DockerOrchestrator(Orchestrator):
             endpoint_spec={
                 "Mode": "dnsrr"  # TODO: check if required
             },
-            configs=configs,
         )
+
+# Auxiliary commands
+    def __prepare_string_array_as_script_param(self, array):
+        param = str(array.__len__())
+        for elem in array:
+            param += (" " + elem)
+        param += " --"
+        return param
 
 # 192.168.2.59:5000/pga?orchestrator=docker&config=c:\users\jluec\desktop\pga_config.yml&master_host=192.168.2.59
