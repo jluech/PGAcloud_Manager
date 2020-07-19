@@ -29,7 +29,9 @@ class DockerOrchestrator(Orchestrator):
     def setup_pga(self, services, setups, operators, population, properties, file_names):
         self.__create_network()
         configs = self.__create_configs(file_names)
-        self.__deploy_stack(services=services, setups=setups, operators=operators, configs=configs)
+        deploy_init = (not population.get("use_initial_population") or properties.get("USE_INIT"))
+        self.__deploy_stack(services=services, setups=setups, operators=operators,
+                            configs=configs, deploy_initializer=deploy_init)
         self._trigger_population_initialization(population)
         self.__trigger_properties_distribution(properties)
 
@@ -50,7 +52,7 @@ class DockerOrchestrator(Orchestrator):
             service.scale(replicas=scaling)
 
 # Commands to control the orchestrator
-    def __deploy_stack(self, services, setups, operators, configs):
+    def __deploy_stack(self, services, setups, operators, configs, deploy_initializer):
         # Creates a service for each component defined in the configuration.
         for support_key in [*services]:
             support = services.get(support_key)
@@ -75,6 +77,11 @@ class DockerOrchestrator(Orchestrator):
                         "Mode": "dnsrr"  # TODO: check if required
                     },
                 )
+            elif setup_name == "initializer":
+                if deploy_initializer:
+                    new_service = self.__create_docker_service(setup, self.pga_network)
+                else:
+                    continue  # no need to deploy initializer if initial population is provided
             else:
                 new_service = self.__create_docker_service(setup, self.pga_network)
 
