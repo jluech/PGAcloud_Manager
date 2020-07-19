@@ -262,8 +262,7 @@ class DockerOrchestrator(Orchestrator):
     def __update_service_with_configs(self, configs, service):
         # Updates the given service with the new configs.
         logging.debug("Updating with docker configs.")
-        config_param = self.__prepare_string_array_as_script_param(configs)
-        logging.debug(config_param)
+        config_param = self.__prepare_array_as_script_param(configs)
         script_path = os.path.join(os.getcwd(), "utilities/docker_service_update_configs.sh")
         script_args = "--service {service_} --host {host_} --configs {confs_}"
         utils.execute_command(
@@ -275,7 +274,6 @@ class DockerOrchestrator(Orchestrator):
             working_directory=os.curdir,
             environment_variables=None,
             executor="StackDeploy",
-            livestream=True,
         )
 
     def __create_docker_service(self, service_dict, network):
@@ -295,11 +293,9 @@ class DockerOrchestrator(Orchestrator):
         )
 
 # Auxiliary commands
-    def __prepare_string_array_as_script_param(self, array):
-        param = str(array.__len__())
+    def __prepare_array_as_script_param(self, array):
+        param = ""
         for elem in array:
-            param += (" " + elem)
-        param += " --"
+            param += "{} ".format(elem)
+        param += "--"
         return param
-
-# 192.168.2.59:5000/pga?orchestrator=docker&config=c:\users\jluec\desktop\pga_config.yml&master_host=192.168.2.59
