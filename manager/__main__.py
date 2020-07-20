@@ -135,6 +135,28 @@ def create_pga():
     })
 
 
+@mgr.route("/pga/<int:pga_id>", methods=["PUT"])
+def start_pga(pga_id):
+    """
+    Starts the PGA identified by the pga_id route param.
+
+    :param pga_id: the PGA id of the PGA to be started.
+    :type pga_id: int
+
+    :arg orchestrator: the chosen cloud orchestrator.
+    :type orchestrator: str
+    """
+    # Recognizes the correct orchestrator.
+    master_host = request.args.get("master_host")
+    orchestrator_name = request.args.get("orchestrator")
+    if not orchestrator_name:
+        raise Exception("No cloud orchestrator provided! Aborting deployment.")
+    orchestrator = get_orchestrator(orchestrator_name, master_host)
+
+    # Starts the chosen PGA.
+    orchestrator.pga_id = pga_id
+    orchestrator.start_pga()
+
 
 def get_orchestrator(orchestrator_name, master_host, pga_id=None):
     if orchestrator_name == "docker":
