@@ -45,3 +45,12 @@ class Orchestrator(ABC):
             data=population,
             verify=False
         )
+
+    def start_pga(self):
+        requests.put(
+            url="http://runner{sep_}{id_}:5000/{id_}/start".format(
+                sep_=Orchestrator.name_separator,
+                id_=self.pga_id
+            ),
+            verify=False
+        )
