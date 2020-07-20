@@ -35,28 +35,6 @@ class DockerOrchestrator(Orchestrator):
         self.__deploy_stack(services=services, setups=setups, operators=operators,
                             configs=configs, deploy_initializer=deploy_init)
 
-    def distribute_properties(self, properties):
-        # TODO 106: store properties in DB from Runner container
-        # separate method store_properties() in class RedisHandler extending abstract DatabaseHandler
-        # class RabbitMessageQueue extending abstract MessageHandler
-        requests.put(
-            url="http://runner{sep_}{id_}:5000/{id_}/properties".format(
-                sep_=Orchestrator.name_separator,
-                id_=self.pga_id
-            ),
-            verify=False
-        )
-
-    def initialize_population(self, population):
-        # TODO: remove connector image and repo since no longer needed
-        requests.post(
-            url="http://runner{sep_}{id_}:5000/{id_}/population".format(
-                sep_=Orchestrator.name_separator,
-                id_=self.pga_id
-            ),
-            verify=False
-        )
-
     def scale_component(self, service_name, scaling):
         if service_name.__contains__(Orchestrator.name_separator):
             effective_name = service_name.split(Orchestrator.name_separator)[0]
