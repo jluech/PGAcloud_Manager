@@ -62,6 +62,8 @@ def create_pga():
     utils.create_pga_subdir(pga_id)
     files_dir = utils.get_uploaded_files_path(pga_id)
     file_names = []
+    if not file_keys.__contains__("config"):
+        raise Exception("No PGA configuration provided! Aborting deployment.")
     for file_key in file_keys:
         file = request.files[file_key]
         if file_key == "population":
@@ -74,11 +76,7 @@ def create_pga():
         file.save(os.path.join(files_dir, file_name))
 
     # Retrieves the configuration.
-    config_file_path = request.args.get("config")
-    if not config_file_path:
-        raise Exception("No PGA configuration provided! Aborting deployment.")
-    config_filename = utils.get_filename_from_path(config_file_path)
-    config_path = os.path.join(files_dir, config_filename+".yml")
+    config_path = os.path.join(files_dir, "config.yml")
     configuration = utils.parse_yaml(config_path)
 
     # Determines the model to deploy.
