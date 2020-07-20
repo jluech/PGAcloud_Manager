@@ -67,9 +67,9 @@ def create_pga():
     utils.create_pga_subdir(pga_id)
     files_dir = utils.get_uploaded_files_path(pga_id)
     file_names = []
-    if not file_keys.__contains__("config"):
+    if "config" not in [*file_keys]:
         raise Exception("No PGA configuration provided! Aborting deployment.")
-    for file_key in file_keys:
+    for file_key in [*file_keys]:
         file = request.files[file_key]
         if file_key == "population":
             file_name = secure_filename("population.yml")
