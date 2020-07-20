@@ -41,13 +41,18 @@ def get_files(pga_id):
     return jsonify(files_dict)
 
 
-# TODO 104: make POST request only
-@mgr.route("/pga", methods=["GET", "POST"])
+@mgr.route("/pga", methods=["POST"])
 def create_pga():
     """
-    Run a new Parallel Genetic Algorithm in the cloud
+    Creates a new Parallel Genetic Algorithm in the cloud.
 
-    :return (dict): id of new pga
+    :arg master_host: the ip address or hostname of the master node.
+    :type master_host: str
+
+    :arg orchestrator: the chosen cloud orchestrator.
+    :type orchestrator: str
+
+    :return (dict): id [int] and model [str] of new pga
     """
     # Recognizes the correct orchestrator.
     master_host = request.args.get("master_host")
@@ -124,7 +129,10 @@ def create_pga():
     else:
         raise Exception("Custom model detected.")  # TODO 205: implement for custom models
 
-    return jsonify({"id": orchestrator.pga_id})
+    return jsonify({
+        "id": orchestrator.pga_id,
+        "model": model
+    })
 
 
 
