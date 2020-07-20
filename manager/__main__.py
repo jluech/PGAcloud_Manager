@@ -63,18 +63,18 @@ def create_pga():
     pga_id = orchestrator.pga_id
 
     # Saves all the files that were uploaded with the request.
-    file_keys = request.files.keys()
+    file_keys = [*request.files]
     utils.create_pga_subdir(pga_id)
     files_dir = utils.get_uploaded_files_path(pga_id)
     file_names = []
-    if "config" not in [*file_keys]:
+    if "config" not in file_keys:
         raise Exception("No PGA configuration provided! Aborting deployment.")
-    for file_key in [*file_keys]:
+    for file_key in file_keys:
         file = request.files[file_key]
-        if file_key == "population":
-            file_name = secure_filename("population.yml")
-        elif file_key == "config":
+        if file_key == "config":
             file_name = secure_filename("config.yml")
+        elif file_key == "population":
+            file_name = secure_filename("population.yml")
         else:
             file_name = secure_filename(file.filename)
         file_names.append(file_name)
