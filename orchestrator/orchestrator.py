@@ -4,14 +4,13 @@ from abc import ABC, abstractmethod
 
 class Orchestrator(ABC):
     new_id = itertools.count().__next__
-    pga_id = None  # define in child constructor as shown in abstract constructor below
-
     name_separator = "--"
 
-    @abstractmethod
-    def __init__(self):
-        # self.pga_id = Orchestrator.new_id()
-        pass
+    def __init__(self, pga_id=None):
+        if not pga_id:
+            self.pga_id = Orchestrator.new_id()
+        else:
+            self.pga_id = pga_id
 
     @abstractmethod
     def setup_pga(self, services, setups, operators, population, properties, file_names):

@@ -17,8 +17,9 @@ WAIT_FOR_CONFIRMATION_SLEEP = 3  # seconds
 
 
 class DockerOrchestrator(Orchestrator):
-    def __init__(self, master_host):
-        self.pga_id = Orchestrator.new_id()
+    def __init__(self, master_host, pga_id):
+        super().__init__(pga_id)
+
         self.host = master_host
         self.docker_master_client = self.__create_docker_client(
             host_ip=master_host,

@@ -127,12 +127,13 @@ def create_pga():
     return jsonify({"id": orchestrator.pga_id})
 
 
-def get_orchestrator(orchestrator_name, master_host):
+
+def get_orchestrator(orchestrator_name, master_host, pga_id=None):
     if orchestrator_name == "docker":
-        return DockerOrchestrator(master_host)
+        return DockerOrchestrator(master_host, pga_id)
     elif orchestrator_name == "kubernetes":
-        print("Kubernetes orchestrator not yet implemented! Falling back to docker orchestrator.")
-        return DockerOrchestrator(master_host)  # TODO 202: implement kubernetes orchestrator
+        logging.error("Kubernetes orchestrator not yet implemented! Falling back to docker orchestrator.")
+        return DockerOrchestrator(master_host, pga_id)  # TODO 202: implement kubernetes orchestrator
     else:
         raise Exception("Unknown orchestrator requested!")
 
