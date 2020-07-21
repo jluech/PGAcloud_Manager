@@ -135,7 +135,7 @@ def create_pga():
     })
 
 
-@mgr.route("/pga/<int:pga_id>", methods=["PUT"])
+@mgr.route("/pga/<int:pga_id>/start", methods=["PUT"])
 def start_pga(pga_id):
     """
     Starts the PGA identified by the pga_id route param.
@@ -155,6 +155,7 @@ def start_pga(pga_id):
 
     # Starts the chosen PGA.
     orchestrator.pga_id = pga_id
+    logging.debug("Starting PGA {}.".format(orchestrator.pga_id))
     orchestrator.start_pga()
 
 
