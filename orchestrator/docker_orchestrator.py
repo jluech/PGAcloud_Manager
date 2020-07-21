@@ -213,7 +213,7 @@ class DockerOrchestrator(Orchestrator):
     def __create_docker_service(self, service_dict, network):
         return self.docker_master_client.services.create(
             image=service_dict.get("image"),
-            name="{name_}{sep_}{id_}".format(  # TODO: check if numbering is required across networks
+            name="{name_}{sep_}{id_}".format(
                 name_=service_dict.get("name"),
                 sep_=Orchestrator.name_separator,
                 id_=self.pga_id
