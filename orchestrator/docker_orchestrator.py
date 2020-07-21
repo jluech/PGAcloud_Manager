@@ -53,11 +53,13 @@ class DockerOrchestrator(Orchestrator):
 # Commands to control the orchestrator.
     def __deploy_stack(self, services, setups, operators, configs, deploy_initializer):
         # Creates a service for each component defined in the configuration.
+        # Deploy the support services (e.g., MSG and DB).
         for support_key in [*services]:
             support = services.get(support_key)
             new_service = self.__create_docker_service(support, self.pga_network)
             self.__update_service_with_configs(configs, new_service.name)
 
+        # Deploy the setup services (e.g., RUN or INIT).
         for setup_key in [*setups]:
             setup = setups.get(setup_key)
             setup_name = setup.get("name")
@@ -87,6 +89,7 @@ class DockerOrchestrator(Orchestrator):
             self.scale_component(service_name=new_service.name, scaling=setup.get("scaling"))
             self.__update_service_with_configs(configs, new_service.name)
 
+        # Deploy the genetic operator services.
         for operator_key in [*operators]:
             operator = operators.get(operator_key)
             new_service = self.__create_docker_service(operator, self.pga_network)
