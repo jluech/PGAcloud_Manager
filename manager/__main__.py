@@ -159,7 +159,7 @@ def start_pga(pga_id):
 
     # Starts the chosen PGA.
     orchestrator.pga_id = pga_id
-    logging.debug("Starting PGA {}.".format(orchestrator.pga_id))
+    logging.info("Starting PGA {}.".format(orchestrator.pga_id))
     orchestrator.start_pga()
 
     return jsonify({
