@@ -103,7 +103,7 @@ class DockerOrchestrator(Orchestrator):
         troubled = False
         duration = 0.0
         start = time.perf_counter()
-        logging.debug("Waiting for runner service.")
+        logging.info("Waiting for runner service.")
         while not runner_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
             try:
                 response = requests.get(
@@ -120,21 +120,21 @@ class DockerOrchestrator(Orchestrator):
                 runner_running = runner_status == "OK"
 
             if duration >= WAIT_FOR_CONFIRMATION_EXCEEDING and not exceeding:
-                logging.debug("This is taking longer than usual...")
+                logging.info("This is taking longer than usual...")
                 exceeding = True  # only print this once
 
             if duration >= WAIT_FOR_CONFIRMATION_TROUBLED and not troubled:
-                logging.debug("Oh come on! You can do it...")
+                logging.info("Oh come on! You can do it...")
                 troubled = True  # only print this once
 
             time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
             duration = time.perf_counter() - start
 
         if duration >= WAIT_FOR_CONFIRMATION_DURATION:
-            logging.debug("Exceeded waiting time of {time_} seconds. It may have encountered an error. "
-                          "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
+            logging.info("Exceeded waiting time of {time_} seconds. It may have encountered an error. "
+                         "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
         else:
-            logging.debug("Runner service ready.")
+            logging.info("Runner service ready.")
 
 # Commands for docker stuff.
     def __create_docker_client(self, host_ip, host_port):
@@ -198,7 +198,7 @@ class DockerOrchestrator(Orchestrator):
 
     def __update_service_with_configs(self, configs, service):
         # Updates the given service with the new configs.
-        logging.debug("Updating with docker configs.")
+        logging.info("Updating with docker configs.")
         config_param = self.__prepare_array_as_script_param(configs)
         script_path = os.path.join(os.getcwd(), "utilities/docker_service_update_configs.sh")
         script_args = "--service {service_} --host {host_} --configs {confs_}"
