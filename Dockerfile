@@ -13,7 +13,7 @@ RUN apt install -y docker.io
 RUN pip install -U pip && pip install -r requirements.txt
 
 # Format shell script line endings to suit UNIX file endings.
-RUN sed -i.bak 's/\r$//' /pga/utilities/docker_service_update_configs.sh
+RUN sed -i.bak 's/\r$//' /pga/utilities/*.sh
 
 ENTRYPOINT [ "python", "-m", "manager" ]
 
