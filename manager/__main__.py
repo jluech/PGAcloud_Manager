@@ -155,10 +155,9 @@ def start_pga(pga_id):
     orchestrator_name = request.args.get("orchestrator")
     if not orchestrator_name:
         raise Exception("No cloud orchestrator provided! Aborting deployment.")
-    orchestrator = get_orchestrator(orchestrator_name, master_host)
+    orchestrator = get_orchestrator(orchestrator_name, master_host, pga_id)
 
     # Starts the chosen PGA.
-    orchestrator.pga_id = pga_id
     logging.info("Starting PGA {}.".format(orchestrator.pga_id))
     orchestrator.start_pga()
 
