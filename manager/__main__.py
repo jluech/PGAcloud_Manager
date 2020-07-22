@@ -80,8 +80,11 @@ def create_pga():
         file_names.append(file_name)
         file.save(os.path.join(files_dir, file_name))
 
-    # Retrieves the configuration.
+    # Retrieves the configuration and appends the current PGAs id.
     config_path = os.path.join(files_dir, "config.yml")
+    config_file = open(config_path, mode="a")
+    config_file.write("\npga_id: {id_}\n".format(id_=pga_id))
+    config_file.close()
     configuration = utils.parse_yaml(config_path)
 
     # Determines the model to deploy.
@@ -131,7 +134,8 @@ def create_pga():
 
     return jsonify({
         "id": orchestrator.pga_id,
-        "model": model
+        "model": model,
+        "status": "created"
     })
 
 
@@ -157,6 +161,11 @@ def start_pga(pga_id):
     orchestrator.pga_id = pga_id
     logging.debug("Starting PGA {}.".format(orchestrator.pga_id))
     orchestrator.start_pga()
+
+    return jsonify({
+        "id": orchestrator.pga_id,
+        "status": "started"
+    })
 
 
 def get_orchestrator(orchestrator_name, master_host, pga_id=None):
