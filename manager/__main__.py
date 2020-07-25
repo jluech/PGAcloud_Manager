@@ -167,6 +167,23 @@ def start_pga(pga_id):
     })
 
 
+@mgr.route("/pga/<int:pga_id>/result", methods=["PUT"])
+def result_from_pga(pga_id):
+    # Recognizes the correct orchestrator.
+    master_host = request.args.get("master_host")
+    orchestrator_name = request.args.get("orchestrator")
+    if not orchestrator_name:
+        raise Exception("No cloud orchestrator provided! Aborting deployment.")
+    orchestrator = get_orchestrator(orchestrator_name, master_host, pga_id)
+
+    # Retrieves the result from the PGA.
+    logging.info("Received result from PGA {}.".format(pga_id))
+    result = request.data
+    logging.debug(result)
+
+    return make_response(jsonify(None), 204)
+
+
 def get_orchestrator(orchestrator_name, master_host, pga_id=None):
     if orchestrator_name == "docker":
         return DockerOrchestrator(master_host, pga_id)
