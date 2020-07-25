@@ -81,7 +81,7 @@ class DockerOrchestrator(Orchestrator):
                     networks=[self.pga_network.name, "pga-management"],
                     labels={"PGAcloud": "PGA-{id_}".format(id_=self.pga_id)},
                     endpoint_spec={
-                        "Mode": "dnsrr"  # TODO: check if required
+                        "Mode": "dnsrr"
                     },
                 )
             elif setup_name == "initializer":
@@ -214,7 +214,7 @@ class DockerOrchestrator(Orchestrator):
             networks=[network.name],
             labels={"PGAcloud": "PGA-{id_}".format(id_=self.pga_id)},
             endpoint_spec={
-                "Mode": "dnsrr"  # TODO: check if required
+                "Mode": "dnsrr"
             },
         )
 
