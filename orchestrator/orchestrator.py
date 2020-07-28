@@ -10,7 +10,7 @@ class Orchestrator(ABC):
     name_separator = "--"
 
     def __init__(self, pga_id=None):
-        if not pga_id:
+        if pga_id is None:
             self.pga_id = Orchestrator.new_id()
         else:
             self.pga_id = pga_id
@@ -27,7 +27,7 @@ class Orchestrator(ABC):
         pass
 
     def distribute_properties(self, properties):
-        requests.put(
+        response = requests.put(
             url="http://runner{sep_}{id_}:5000/{id_}/properties".format(
                 sep_=Orchestrator.name_separator,
                 id_=self.pga_id
@@ -35,10 +35,14 @@ class Orchestrator(ABC):
             data=properties,
             verify=False
         )
+        logging.info("PUT - http://runner{sep_}{id_}:5000/{id_}/properties - {status_}".format(
+            sep_=Orchestrator.name_separator,
+            id_=self.pga_id,
+            status_=response.status_code,
+        ))
 
     def initialize_population(self, population):
-        # TODO: remove connector image and repo since no longer needed
-        requests.post(
+        response = requests.post(
             url="http://runner{sep_}{id_}:5000/{id_}/population".format(
                 sep_=Orchestrator.name_separator,
                 id_=self.pga_id
@@ -46,6 +50,11 @@ class Orchestrator(ABC):
             data=population,
             verify=False
         )
+        logging.info("POST - http://runner{sep_}{id_}:5000/{id_}/population - {status_}".format(
+            sep_=Orchestrator.name_separator,
+            id_=self.pga_id,
+            status_=response.status_code,
+        ))
 
     def start_pga(self):
         requests.put(

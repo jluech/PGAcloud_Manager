@@ -7,11 +7,8 @@ from werkzeug.utils import secure_filename
 from orchestrator.docker_orchestrator import DockerOrchestrator
 from utilities import utils
 
-logging.basicConfig(level=logging.DEBUG)  # TODO: remove and reduce to INFO
-
-SELECTION_QUEUE_NAME = '{pga_name_}@selection.queue'
-CROSSOVER_QUEUE_NAME = '{pga_name_}@crossover.queue'
-MUTATION_QUEUE_NAME = '{pga_name_}@mutation.queue'
+logging.basicConfig(level=logging.INFO)
+# TODO: remove connector image and repo since no longer needed
 
 
 # App initialization.
@@ -121,14 +118,15 @@ def create_pga():
         for property_key in [*properties_config]:
             properties[property_key] = properties_config.get(property_key)
 
-        # TODO 104: deploy INIT image if configuration.get("properties").get("USE_INIT")
         # Creates the new PGA.
         all_services = utils.merge_dict(services, utils.merge_dict(setups, utils.merge_dict(
             operators, utils.merge_dict(population, properties))))
         model_dict = construct_model_dict(model, all_services)
         orchestrator.setup_pga(model_dict=model_dict, services=services, setups=setups, operators=operators,
                                population=population, properties=properties, file_names=file_names)
+        logging.info("Distribute properties:")
         orchestrator.distribute_properties(properties=properties)
+        logging.info("Initialize properties:")
         orchestrator.initialize_population(population=population)
     elif model == "Island":
         raise Exception("Island model not implemented yet. Aborting deployment.")  # TODO 204: implement island model
@@ -182,7 +180,7 @@ def result_from_pga(pga_id):
     # Retrieves the result from the PGA.
     logging.info("Received result from PGA {}.".format(pga_id))
     result = request.data
-    logging.debug(result)
+    logging.info(result)  # TODO: remove
 
     return make_response(jsonify(None), 204)
 
@@ -239,4 +237,4 @@ def construct_model_dict(model, all_services):
 
 
 if __name__ == "__main__":
-    mgr.run(host="0.0.0.0", debug=True)  # TODO: remove debug mode
+    mgr.run(host="0.0.0.0")
