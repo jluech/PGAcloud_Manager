@@ -47,6 +47,11 @@ def execute_command(
     return stdout, return_code
 
 
+def merge_dict(dict1, dict2):
+    res = {**dict1, **dict2}
+    return res
+
+
 def parse_yaml(yaml_file_path):
     with open(yaml_file_path, mode="r", encoding="utf-8") as yaml_file:
         content = yaml.safe_load(yaml_file) or {}
