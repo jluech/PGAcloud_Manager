@@ -1,11 +1,10 @@
+import json
 import logging
 import os
-import time
 import traceback
 import warnings
 
 import docker
-import requests
 
 from orchestrator.orchestrator import Orchestrator
 from utilities import utils
@@ -28,12 +27,12 @@ class DockerOrchestrator(Orchestrator):
         )
 
 # Common orchestrator functionality.
-    def setup_pga(self, services, setups, operators, population, properties, file_names):
+    def setup_pga(self, model_dict, services, setups, operators, population, properties, file_names):
         self.__create_network()
         configs = self.__create_configs(file_names)
         deploy_init = (not population.get("use_initial_population") or properties.get("USE_INIT"))
         self.__deploy_stack(services=services, setups=setups, operators=operators,
-                            configs=configs, deploy_initializer=deploy_init)
+                            configs=configs, model_dict=model_dict, deploy_initializer=deploy_init)
 
     def scale_component(self, service_name, scaling):
         if service_name.__contains__(Orchestrator.name_separator):
@@ -51,14 +50,14 @@ class DockerOrchestrator(Orchestrator):
             service.scale(replicas=scaling)
 
 # Commands to control the orchestrator.
-    def __deploy_stack(self, services, setups, operators, configs, deploy_initializer):
+    def __deploy_stack(self, services, setups, operators, configs, model_dict, deploy_initializer):
         # Creates a service for each component defined in the configuration.
         # Deploy the support services (e.g., MSG and DB).
         supports = {}
         for support_key in [*services]:
             support = services.get(support_key)
             new_service = self.__create_docker_service(service_dict=support, network=self.pga_network)
-            self.__update_service_with_configs(configs, new_service.name)
+            self.__update_service_with_configs(configs=configs, service_name=new_service.name)
             supports[support.get("name")] = new_service
         # Ensure services are starting up in the background while waiting for them.
         for support_key in [*supports]:
@@ -66,6 +65,7 @@ class DockerOrchestrator(Orchestrator):
             self.__wait_for_service(service_name=support.name)
 
         # Deploy the setup services (e.g., RUN or INIT).
+        setup_services = {}
         for setup_key in [*setups]:
             setup = setups.get(setup_key)
             setup_name = setup.get("name")
@@ -88,59 +88,34 @@ class DockerOrchestrator(Orchestrator):
                 if deploy_initializer:
                     new_service = self.__create_docker_service(service_dict=setup, network=self.pga_network)
                 else:
-                    continue  # no need to deploy initializer if initial population is provided
+                    continue  # no need to deploy initializer if initial population is provided.
             else:
                 new_service = self.__create_docker_service(service_dict=setup, network=self.pga_network)
 
             self.scale_component(service_name=new_service.name, scaling=setup.get("scaling"))
-            self.__update_service_with_configs(configs, new_service.name)
+            container_config_name = self.__create_container_config(new_service.name, setup_key, model_dict)
+            self.__update_service_with_configs(configs=configs, service_name=new_service.name,
+                                               container_config=container_config_name)
+            setup_services[setup_name] = new_service
 
         # Deploy the genetic operator services.
         for operator_key in [*operators]:
             operator = operators.get(operator_key)
             new_service = self.__create_docker_service(service_dict=operator, network=self.pga_network)
             self.scale_component(service_name=new_service.name, scaling=operator.get("scaling"))
-            self.__update_service_with_configs(configs, new_service.name)
+            container_config_name = self.__create_container_config(new_service.name, operator_key, model_dict)
+            self.__update_service_with_configs(configs=configs, service_name=new_service.name,
+                                               container_config=container_config_name)
 
-        # Waits for WAIT_FOR_CONFIRMATION_DURATION seconds or until runner is up and its API ready.
-        runner_running = False
-        runner_status = "NOK"
-        exceeding = False
-        troubled = False
-        duration = 0.0
-        logging.info("Waiting for runner service.")
-        start = time.perf_counter()
-        while not runner_running and duration < WAIT_FOR_CONFIRMATION_DURATION:
-            try:
-                response = requests.get(
-                    url="http://runner{sep_}{id_}:5000/status".format(
-                        sep_=Orchestrator.name_separator,
-                        id_=self.pga_id
-                    ),
-                    verify=False
-                )
-                runner_status = response.content.decode("utf-8")
-            except:
-                pass
-            finally:
-                runner_running = runner_status == "OK"
-
-            if duration >= WAIT_FOR_CONFIRMATION_EXCEEDING and not exceeding:
-                logging.info("This is taking longer than usual...")
-                exceeding = True  # only print this once
-
-            if duration >= WAIT_FOR_CONFIRMATION_TROUBLED and not troubled:
-                logging.info("Oh come on! You can do it...")
-                troubled = True  # only print this once
-
-            time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
-            duration = time.perf_counter() - start
-
-        if duration >= WAIT_FOR_CONFIRMATION_DURATION:
-            logging.info("Exceeded waiting time of {time_} seconds. It may have encountered an error. "
-                         "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
-        else:
-            logging.info("Runner service ready.")
+        # Wait for setups before initiating properties or population.
+        if deploy_initializer:
+            initializer = setup_services.get("initializer")
+            self.__wait_for_service(service_name=initializer.name)
+        for setup_key in [*setup_services]:
+            if setup_key == "initializer":
+                continue  # no need to wait for initializer if not deployed, or already waited for
+            setup = setup_services.get(setup_key)  # actual docker service
+            self.__wait_for_service(service_name=setup.name)
 
 # Commands for docker stuff.
     def __create_docker_client(self, host_ip, host_port):
@@ -202,6 +177,22 @@ class DockerOrchestrator(Orchestrator):
 
         return configs
 
+    def __create_container_config(self, service_name, service_key, model_dict):
+        effective_name = service_name.split(Orchestrator.name_separator)[0]
+        config_name = "{id_}{sep_}{name_}-config.yml".format(
+            id_=self.pga_id,
+            sep_=Orchestrator.name_separator,
+            name_=effective_name
+        )
+        config_content = model_dict[service_key]
+        config_content["pga_id"] = self.pga_id
+        self.docker_master_client.configs.create(
+            name=config_name,
+            data=json.dumps(config_content),
+            labels={"PGAcloud": "PGA-{id_}".format(id_=self.pga_id)}
+        )
+        return config_name
+
     def __create_docker_service(self, service_dict, network):
         return self.docker_master_client.services.create(
             image=service_dict.get("image"),
@@ -218,10 +209,10 @@ class DockerOrchestrator(Orchestrator):
             },
         )
 
-    def __update_service_with_configs(self, configs, service_name):
+    def __update_service_with_configs(self, configs, service_name, container_config=None):
         # Updates the given service with the new configs.
         logging.info("Updating {name_} with docker configs.".format(name_=service_name))
-        config_param = self.__prepare_array_as_script_param(configs)
+        config_param = self.__prepare_array_as_script_param(configs, container_config)
         script_path = os.path.join(os.getcwd(), "utilities/docker_service_update_configs.sh")
         script_args = "--service {service_} --host {host_} --configs {confs_}"
         utils.execute_command(
@@ -251,9 +242,13 @@ class DockerOrchestrator(Orchestrator):
         )
 
 # Auxiliary commands.
-    def __prepare_array_as_script_param(self, array):
+    def __prepare_array_as_script_param(self, general_configs, container_config):
         param = ""
-        for elem in array:
-            param += "{} ".format(elem)
-        param += "--"
+        for conf in general_configs:
+            param += "{} ".format(conf)
+        if container_config is None:
+            param += "--"
+        else:
+            param += container_config
+            param += " --"
         return param

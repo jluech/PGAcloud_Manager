@@ -1,4 +1,5 @@
 import itertools
+import logging
 from abc import ABC, abstractmethod
 
 import requests
@@ -15,7 +16,7 @@ class Orchestrator(ABC):
             self.pga_id = pga_id
 
     @abstractmethod
-    def setup_pga(self, services, setups, operators, population, properties, file_names):
+    def setup_pga(self, model, services, setups, operators, population, properties, file_names):
         # Creates and deploys all components required for a new PGA.
         pass
 

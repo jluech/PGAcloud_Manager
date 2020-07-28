@@ -123,7 +123,10 @@ def create_pga():
 
         # TODO 104: deploy INIT image if configuration.get("properties").get("USE_INIT")
         # Creates the new PGA.
-        orchestrator.setup_pga(services=services, setups=setups, operators=operators,
+        all_services = utils.merge_dict(services, utils.merge_dict(setups, utils.merge_dict(
+            operators, utils.merge_dict(population, properties))))
+        model_dict = construct_model_dict(model, all_services)
+        orchestrator.setup_pga(model_dict=model_dict, services=services, setups=setups, operators=operators,
                                population=population, properties=properties, file_names=file_names)
         orchestrator.distribute_properties(properties=properties)
         orchestrator.initialize_population(population=population)
@@ -192,6 +195,47 @@ def get_orchestrator(orchestrator_name, master_host, pga_id=None):
         return DockerOrchestrator(master_host, pga_id)  # TODO 202: implement kubernetes orchestrator
     else:
         raise Exception("Unknown orchestrator requested!")
+
+
+def construct_model_dict(model, all_services):
+    if model == "Master-Slave":
+        # init = RUN/(INIT/)FE/RUN
+        # model = RUN/SEL/CO/MUT/FE/RUN
+        model_dict = {
+            "runner": {
+                "source": "generation",
+                "init_gen": "initializer",
+                "init_eval": "fitness",
+                "pga": "selection"
+            },
+            "initializer": {
+                "source": "initializer",
+                "target": "fitness"
+            },
+            "selection": {
+                "source": "selection",
+                "target": "crossover"
+            },
+            "crossover": {
+                "source": "crossover",
+                "target": "mutation"
+            },
+            "mutation": {
+                "source": "mutation",
+                "target": "fitness"
+            },
+            "fitness": {
+                "source": "fitness",
+                "target": "generation"
+            }
+        }
+    elif model == "Island":
+        model_dict = {}
+        raise Exception("Island model not implemented yet!")
+    else:
+        model_dict = {}
+        raise Exception("Custom models not implemented yet!")
+    return model_dict
 
 
 if __name__ == "__main__":
