@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 import traceback
 import warnings
 
@@ -12,7 +13,7 @@ from utilities import utils
 WAIT_FOR_CONFIRMATION_DURATION = 45.0
 WAIT_FOR_CONFIRMATION_EXCEEDING = 15.0
 WAIT_FOR_CONFIRMATION_TROUBLED = 30.0
-WAIT_FOR_CONFIRMATION_SLEEP = 3  # seconds
+WAIT_FOR_CONFIRMATION_SLEEP = 2  # seconds
 
 
 class DockerOrchestrator(Orchestrator):
@@ -48,6 +49,71 @@ class DockerOrchestrator(Orchestrator):
                 raise Exception("No service {name_} found for scaling!".format(name_=service_name))
             service = found_services[0]
             service.scale(replicas=scaling)
+
+    def remove_pga(self):
+        # Removes the docker services of this PGA.
+        pga_filter = {"label": "PGAcloud=PGA-{id_}".format(id_=self.pga_id)}
+        current_services = self.docker_master_client.services.list(filters=pga_filter)
+        if current_services.__len__() > 0:
+            for service in current_services:
+                service.remove()
+
+            duration = 0.0
+            start = time.perf_counter()
+            while current_services.__len__() > 0 and duration < WAIT_FOR_CONFIRMATION_DURATION:
+                current_services = self.docker_master_client.services.list(filters=pga_filter)
+                time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
+                duration = time.perf_counter() - start
+
+            if duration >= WAIT_FOR_CONFIRMATION_DURATION:
+                logging.info("Exceeded waiting time of {time_} seconds. It may have encountered an error. "
+                             "Please verify or try again shortly.".format(time_=WAIT_FOR_CONFIRMATION_DURATION))
+            else:
+                logging.info("Successfully removed docker services for PGA {}.".format(self.pga_id))
+        else:
+            logging.info("No docker services of PGA {} running that could be removed.".format(self.pga_id))
+
+        # Removes the docker configs used for file sharing.
+        current_configs = self.docker_master_client.configs.list(filters=pga_filter)
+        if current_configs.__len__() > 0:
+            for conf in current_configs:
+                conf.remove()
+
+            timer = 0
+            start = time.perf_counter()
+            while current_configs.__len__() > 0 and timer < WAIT_FOR_CONFIRMATION_DURATION:
+                current_configs = self.docker_master_client.configs.list(filters=pga_filter)
+                time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
+                timer = time.perf_counter() - start
+
+            if timer >= WAIT_FOR_CONFIRMATION_DURATION:
+                logging.info("We seem to have encountered an error when removing the docker configs. "
+                             "Please verify or try again shortly.")
+            else:
+                logging.info("Successfully removed docker configs for PGA {}.".format(self.pga_id))
+        else:
+            logging.info("No matching docker configs found that could be removed.")
+
+        # Removes the docker network.
+        pga_networks = self.docker_master_client.networks.list(filters=pga_filter)
+        if pga_networks.__len__() > 0:
+            for network in pga_networks:
+                network.remove()
+
+            timer = 0
+            start = time.perf_counter()
+            while pga_networks.__len__() > 0 and timer < WAIT_FOR_CONFIRMATION_DURATION:
+                pga_networks = self.docker_master_client.networks.list(filters=pga_filter)
+                time.sleep(WAIT_FOR_CONFIRMATION_SLEEP)  # avoid network overhead
+                timer = time.perf_counter() - start
+
+            if timer >= WAIT_FOR_CONFIRMATION_DURATION:
+                logging.info("We seem to have encountered an error when removing the docker network. "
+                             "Please verify or try again shortly.")
+            else:
+                logging.info("Successfully removed docker network for PGA {}.".format(self.pga_id))
+        else:
+            logging.info("No PGA docker network found that could be removed.")
 
 # Commands to control the orchestrator.
     def __deploy_stack(self, services, setups, operators, configs, model_dict, deploy_initializer):

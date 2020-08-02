@@ -26,6 +26,11 @@ class Orchestrator(ABC):
         # raise Warning("Scaling aborted: Scaling of runner or manager services not permitted!")
         pass
 
+    @abstractmethod
+    def remove_pga(self):
+        # Removes the components of the PGA.
+        pass
+
     def distribute_properties(self, properties):
         response = requests.put(
             url="http://runner{sep_}{id_}:5000/{id_}/properties".format(
@@ -64,3 +69,13 @@ class Orchestrator(ABC):
             ),
             verify=False
         )
+
+    def stop_pga(self):
+        response = requests.put(
+            url="http://runner{sep_}{id_}:5000/stop".format(
+                sep_=Orchestrator.name_separator,
+                id_=self.pga_id
+            ),
+            verify=False
+        )
+        return response.status_code

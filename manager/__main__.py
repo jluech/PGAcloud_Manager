@@ -18,11 +18,6 @@ mgr = Flask(__name__)
 utils.__set_files_dir(mgr.instance_path)
 
 
-@mgr.errorhandler(404)
-def not_found(error):
-    return make_response(jsonify({'error': 'Not found'}), 404)
-
-
 @mgr.route("/status", methods=["GET"])
 def status():
     return "OK"
@@ -58,6 +53,8 @@ def create_pga():
         raise Exception("No cloud orchestrator provided! Aborting deployment.")
     orchestrator = get_orchestrator(orchestrator_name, master_host)
     pga_id = orchestrator.pga_id
+
+    logging.info("Creating new PGA: {}.".format(pga_id))
 
     # Saves all the files that were uploaded with the request.
     file_keys = [*request.files]
@@ -160,11 +157,39 @@ def start_pga(pga_id):
 
     # Starts the chosen PGA.
     logging.info("Starting PGA {}.".format(orchestrator.pga_id))
-    orchestrator.start_pga()
+    orchestrator.start_pga()  # Makes a blocking call to Runner.
 
     return jsonify({
         "id": orchestrator.pga_id,
-        "status": "started"
+        "status": "finished"
+    })
+
+
+@mgr.route("/pga/<int:pga_id>/stop", methods=["PUT"])
+def stop_pga(pga_id):
+    # Recognizes the correct orchestrator.
+    master_host = request.args.get("master_host")
+    orchestrator_name = request.args.get("orchestrator")
+    if not orchestrator_name:
+        raise Exception("No cloud orchestrator provided! Aborting deployment.")
+    orchestrator = get_orchestrator(orchestrator_name, master_host, pga_id)
+
+    # Stops the chosen PGA.
+    logging.info("Terminating PGA {}.".format(orchestrator.pga_id))
+    exit_code = orchestrator.stop_pga()
+    if exit_code != 202:
+        logging.error("Terminating PGA {id_} finished with unexpected exit code: {code_}".format(
+            id_=orchestrator.pga_id,
+            code_=exit_code,
+        ))
+
+    # Removes the PGA components.
+    logging.info("Removing components of PGA {}.".format(orchestrator.pga_id))
+    orchestrator.remove_pga()
+
+    return jsonify({
+        "id": orchestrator.pga_id,
+        "status": "removed"
     })
 
 
