@@ -1,14 +1,13 @@
 import logging
 import os
 
-from flask import Flask, jsonify, make_response, request
+from flask import Flask, jsonify, request
 from werkzeug.utils import secure_filename
 
 from orchestrator.docker_orchestrator import DockerOrchestrator
 from utilities import utils
 
 logging.basicConfig(level=logging.INFO)
-# TODO: remove connector image and repo since no longer needed
 
 
 # App initialization.
@@ -157,11 +156,15 @@ def start_pga(pga_id):
 
     # Starts the chosen PGA.
     logging.info("Starting PGA {}.".format(orchestrator.pga_id))
-    orchestrator.start_pga()  # Makes a blocking call to Runner.
+    response = orchestrator.start_pga()  # Makes a blocking call to Runner.
+
+    result_json = response.json()
+    fittest_dict = result_json["fittest"]
 
     return jsonify({
         "id": orchestrator.pga_id,
-        "status": "finished"
+        "status": "finished",
+        "fittest": fittest_dict,
     })
 
 
@@ -182,6 +185,9 @@ def stop_pga(pga_id):
             id_=orchestrator.pga_id,
             code_=exit_code,
         ))
+        status_code = "error_{}".format(exit_code)
+    else:
+        status_code = "removed"
 
     # Removes the PGA components.
     logging.info("Removing components of PGA {}.".format(orchestrator.pga_id))
@@ -189,25 +195,8 @@ def stop_pga(pga_id):
 
     return jsonify({
         "id": orchestrator.pga_id,
-        "status": "removed"
+        "status": status_code
     })
-
-
-@mgr.route("/pga/<int:pga_id>/result", methods=["PUT"])
-def result_from_pga(pga_id):
-    # Recognizes the correct orchestrator.
-    master_host = request.args.get("master_host")
-    orchestrator_name = request.args.get("orchestrator")
-    if not orchestrator_name:
-        raise Exception("No cloud orchestrator provided! Aborting deployment.")
-    orchestrator = get_orchestrator(orchestrator_name, master_host, pga_id)
-
-    # Retrieves the result from the PGA.
-    logging.info("Received result from PGA {}.".format(pga_id))
-    result = request.data
-    logging.info(result)  # TODO: remove
-
-    return make_response(jsonify(None), 204)
 
 
 def get_orchestrator(orchestrator_name, master_host, pga_id=None):
