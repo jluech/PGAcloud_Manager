@@ -62,7 +62,7 @@ class Orchestrator(ABC):
         ))
 
     def start_pga(self):
-        requests.put(
+        return requests.put(
             url="http://runner{sep_}{id_}:5000/{id_}/start".format(
                 sep_=Orchestrator.name_separator,
                 id_=self.pga_id
